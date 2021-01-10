@@ -11,8 +11,8 @@ github.com/google/go-querystring v1.0.0/go.mod h1:odCYkC5MyYFN7vkCjXpyrEuKhc/BUO
 github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/milosgajdos/netscrape v0.0.1 h1:h47ENOEZGf+rIwVio3akM/c/vmCa8Jwk0ehtSFf8q3Q=
-github.com/milosgajdos/netscrape v0.0.1/go.mod h1:tZuYOuxy0jomiNHlavIKzDrDo/wks4ply+KNKE/zFJM=
+github.com/milosgajdos/netscrape v0.0.2 h1:F/iVugUJs+5TTAJneiJsM17Vxs17HYf0Dv3ei54lDc0=
+github.com/milosgajdos/netscrape v0.0.2/go.mod h1:tZuYOuxy0jomiNHlavIKzDrDo/wks4ply+KNKE/zFJM=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/exp v0.0.0-20180321215751-8460e604b9de/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=

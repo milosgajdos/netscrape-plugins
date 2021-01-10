@@ -41,8 +41,6 @@ type resources struct {
 }
 
 type scraper struct {
-	// ctx is scraper context
-	ctx context.Context
 	// gh is GitHub API client.
 	gh *github.Client
 	// opts are scraper options
@@ -50,7 +48,7 @@ type scraper struct {
 }
 
 // NewScraper creates a new GitHub star repository scraper and returns it.
-func NewScraper(ctx context.Context, gh *github.Client, opts ...Option) (*scraper, error) {
+func NewScraper(gh *github.Client, opts ...Option) (*scraper, error) {
 	copts := Options{}
 	for _, apply := range opts {
 		apply(&copts)
@@ -65,14 +63,13 @@ func NewScraper(ctx context.Context, gh *github.Client, opts ...Option) (*scrape
 	}
 
 	return &scraper{
-		ctx:  ctx,
 		gh:   gh,
 		opts: copts,
 	}, nil
 }
 
 // Plan builds GH stars space plan and returns it.
-func (g *scraper) Plan(o space.Origin) (space.Plan, error) {
+func (g *scraper) Plan(ctx context.Context, o space.Origin) (space.Plan, error) {
 	p, err := plan.New(o)
 	if err != nil {
 		return nil, err
@@ -83,7 +80,7 @@ func (g *scraper) Plan(o space.Origin) (space.Plan, error) {
 		return nil, err
 	}
 
-	if err := p.Add(repo, space.AddOptions{}); err != nil {
+	if err := p.Add(ctx, repo, space.AddOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +89,7 @@ func (g *scraper) Plan(o space.Origin) (space.Plan, error) {
 		return nil, err
 	}
 
-	if err := p.Add(lang, space.AddOptions{}); err != nil {
+	if err := p.Add(ctx, lang, space.AddOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -101,14 +98,14 @@ func (g *scraper) Plan(o space.Origin) (space.Plan, error) {
 		return nil, err
 	}
 
-	if err := p.Add(topic, space.AddOptions{}); err != nil {
+	if err := p.Add(ctx, topic, space.AddOptions{}); err != nil {
 		return nil, err
 	}
 
 	return p, nil
 }
 
-func (g *scraper) mapObjects(t *top.Top, linkTo uuid.UID, res space.Resource, rel string, names []string) ([]space.Object, error) {
+func (g *scraper) mapObjects(ctx context.Context, t *top.Top, to uuid.UID, res space.Resource, rel string, names []string) ([]space.Object, error) {
 	objects := make([]space.Object, len(names))
 
 	for i, name := range names {
@@ -130,11 +127,11 @@ func (g *scraper) mapObjects(t *top.Top, linkTo uuid.UID, res space.Resource, re
 			return nil, err
 		}
 
-		if err := objects[i].Link(linkTo, space.LinkOptions{Metadata: linkMd}); err != nil {
+		if err := objects[i].Link(to, space.LinkOptions{Metadata: linkMd}); err != nil {
 			return nil, err
 		}
 
-		if err := t.Add(objects[i], space.AddOptions{MergeLinks: true}); err != nil {
+		if err := t.Add(ctx, objects[i], space.AddOptions{MergeLinks: true}); err != nil {
 			return nil, err
 		}
 	}
@@ -142,7 +139,7 @@ func (g *scraper) mapObjects(t *top.Top, linkTo uuid.UID, res space.Resource, re
 	return objects, nil
 }
 
-func (g *scraper) fetchRepos(reposChan chan<- []*github.StarredRepository, done <-chan struct{}) error {
+func (g *scraper) fetchRepos(ctx context.Context, reposChan chan<- []*github.StarredRepository, done <-chan struct{}) error {
 	defer close(reposChan)
 
 	opts := &github.ActivityListStarredOptions{
@@ -150,13 +147,15 @@ func (g *scraper) fetchRepos(reposChan chan<- []*github.StarredRepository, done 
 	}
 
 	for {
-		repos, resp, err := g.gh.Activity.ListStarred(g.ctx, g.opts.User, opts)
+		repos, resp, err := g.gh.Activity.ListStarred(ctx, g.opts.User, opts)
 		if err != nil {
 			return err
 		}
 
 		select {
 		case reposChan <- repos:
+		case <-ctx.Done():
+			return nil
 		case <-done:
 			return nil
 		}
@@ -171,7 +170,7 @@ func (g *scraper) fetchRepos(reposChan chan<- []*github.StarredRepository, done 
 	return nil
 }
 
-func (g *scraper) mapRepos(reposChan <-chan []*github.StarredRepository, t *top.Top, res resources) error {
+func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.StarredRepository, t *top.Top, res resources) error {
 	for repos := range reposChan {
 		// NOTE: we are only iterating over the repos resources
 		// since topics and langs are merely adjacent nodes of repos objects
@@ -194,7 +193,7 @@ func (g *scraper) mapRepos(reposChan <-chan []*github.StarredRepository, t *top.
 				return err
 			}
 
-			topicObjects, err := g.mapObjects(t, uid, res.topic, topicRel, repo.Repository.Topics)
+			topicObjects, err := g.mapObjects(ctx, t, uid, res.topic, topicRel, repo.Repository.Topics)
 			if err != nil {
 				return err
 			}
@@ -202,7 +201,7 @@ func (g *scraper) mapRepos(reposChan <-chan []*github.StarredRepository, t *top.
 			var langObjects []space.Object
 			if repo.Repository.Language != nil {
 				var err error
-				langObjects, err = g.mapObjects(t, uid, res.lang, langRel, []string{*repo.Repository.Language})
+				langObjects, err = g.mapObjects(ctx, t, uid, res.lang, langRel, []string{*repo.Repository.Language})
 				if err != nil {
 					return err
 				}
@@ -237,7 +236,7 @@ func (g *scraper) mapRepos(reposChan <-chan []*github.StarredRepository, t *top.
 				}
 			}
 
-			if err := t.Add(obj, space.AddOptions{MergeLinks: true}); err != nil {
+			if err := t.Add(ctx, obj, space.AddOptions{MergeLinks: true}); err != nil {
 				return err
 			}
 		}
@@ -246,12 +245,12 @@ func (g *scraper) mapRepos(reposChan <-chan []*github.StarredRepository, t *top.
 	return nil
 }
 
-func getResource(p space.Plan, name, version string) (space.Resource, error) {
+func getResource(ctx context.Context, p space.Plan, name, version string) (space.Resource, error) {
 	q := base.Build().
 		Add(query.Name(name), query.StringEqFunc(name)).
 		Add(query.Version(version), query.StringEqFunc(version))
 
-	rx, err := p.Get(q)
+	rx, err := p.Get(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -261,23 +260,23 @@ func getResource(p space.Plan, name, version string) (space.Resource, error) {
 
 // Map builds a map of GH stars space topology and returns it.
 // It returns error if any of the API calls fails with error.
-func (g *scraper) Map(p space.Plan) (space.Top, error) {
+func (g *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 	t, err := top.New(p)
 	if err != nil {
 		return nil, err
 	}
 
-	repoRes, err := getResource(p, "repo", version)
+	repoRes, err := getResource(ctx, p, "repo", version)
 	if err != nil {
 		return nil, err
 	}
 
-	topicRes, err := getResource(p, "topic", version)
+	topicRes, err := getResource(ctx, p, "topic", version)
 	if err != nil {
 		return nil, err
 	}
 
-	langRes, err := getResource(p, "lang", version)
+	langRes, err := getResource(ctx, p, "lang", version)
 	if err != nil {
 		return nil, err
 	}
@@ -301,8 +300,9 @@ func (g *scraper) Map(p space.Plan) (space.Top, error) {
 		go func(i int) {
 			defer wg.Done()
 			select {
-			case errChan <- g.mapRepos(reposChan, t, res):
+			case errChan <- g.mapRepos(ctx, reposChan, t, res):
 			case <-done:
+			case <-ctx.Done():
 			}
 		}(i)
 	}
@@ -310,7 +310,7 @@ func (g *scraper) Map(p space.Plan) (space.Top, error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		errChan <- g.fetchRepos(reposChan, done)
+		errChan <- g.fetchRepos(ctx, reposChan, done)
 	}()
 
 	select {
