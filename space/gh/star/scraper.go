@@ -10,7 +10,7 @@ import (
 	"github.com/milosgajdos/netscrape/pkg/query/base"
 	"github.com/milosgajdos/netscrape/pkg/query/predicate"
 	"github.com/milosgajdos/netscrape/pkg/space"
-	"github.com/milosgajdos/netscrape/pkg/space/object"
+	"github.com/milosgajdos/netscrape/pkg/space/entity"
 	"github.com/milosgajdos/netscrape/pkg/space/plan"
 	"github.com/milosgajdos/netscrape/pkg/space/resource"
 	"github.com/milosgajdos/netscrape/pkg/space/top"
@@ -94,6 +94,8 @@ func (g *scraper) Plan(ctx context.Context, o space.Origin) (space.Plan, error) 
 	return plan, nil
 }
 
+// fetchRepos fetches GitHub repos into reposChan.
+// Fetching can be stopped by closing done channel.
 func (g *scraper) fetchRepos(ctx context.Context, reposChan chan<- []*github.StarredRepository, done <-chan struct{}) error {
 	defer close(reposChan)
 
@@ -125,10 +127,10 @@ func (g *scraper) fetchRepos(ctx context.Context, reposChan chan<- []*github.Sta
 	return nil
 }
 
-// mapObjects creates space objects with given names in namespace ns and adds them to topology top.
-// It links all the created objects to "to" UID before adding them into topology top.
-func (g *scraper) mapObjects(ctx context.Context, top space.Top, names []string, ns string, r space.Resource, to uuid.UID, rel string) ([]space.Object, error) {
-	objects := make([]space.Object, len(names))
+// mapEntities creates space entities from r with given names in namespace ns and adds them to top.
+// It links all the newly created entities to peer.
+func (g *scraper) mapEntities(ctx context.Context, top space.Top, names []string, ns string, r space.Resource, peer uuid.UID, rel string) ([]space.Entity, error) {
+	entities := make([]space.Entity, len(names))
 
 	for i, name := range names {
 		a, err := attrs.New()
@@ -137,28 +139,28 @@ func (g *scraper) mapObjects(ctx context.Context, top space.Top, names []string,
 		}
 		a.Set("relation", rel)
 
-		// NOTE: we are setting uid to the name of the object
+		// NOTE: we are setting the uid to the name of the entity
 		// this is so we avoid duplicating topics with the same name
 		uid, err := uuid.NewFromString(strings.ToLower(name + "-" + r.Name()))
 		if err != nil {
 			return nil, err
 		}
 
-		objects[i], err = object.New(strings.ToLower(name), ns, r, object.WithUID(uid))
+		entities[i], err = entity.New(strings.ToLower(name), ns, r, entity.WithUID(uid))
 		if err != nil {
 			return nil, err
 		}
 
-		if err := objects[i].Link(to, space.WithAttrs(a)); err != nil {
+		if err := entities[i].Link(peer, space.WithAttrs(a)); err != nil {
 			return nil, err
 		}
 
-		if err := top.Add(ctx, objects[i]); err != nil {
+		if err := top.Add(ctx, entities[i]); err != nil {
 			return nil, err
 		}
 	}
 
-	return objects, nil
+	return entities, nil
 }
 
 // mapRepos reads GH repos from respoChan and adds them to topology top.
@@ -185,15 +187,15 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			topics, err := g.mapObjects(ctx, top, repo.Repository.Topics, ns, resMap[topicRes], uid, topicRel)
+			topics, err := g.mapEntities(ctx, top, repo.Repository.Topics, ns, resMap[topicRes], uid, topicRel)
 			if err != nil {
 				return err
 			}
 
-			var langs []space.Object
+			var langs []space.Entity
 			if repo.Repository.Language != nil {
 				var err error
-				langs, err = g.mapObjects(ctx, top, []string{*repo.Repository.Language}, ns, resMap[langRes], uid, langRel)
+				langs, err = g.mapEntities(ctx, top, []string{*repo.Repository.Language}, ns, resMap[langRes], uid, langRel)
 				if err != nil {
 					return err
 				}
@@ -209,13 +211,13 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			ownerObj, err := object.New(owner, ns, resMap[ownerRes], object.WithUID(ownerUID))
+			ownerEnt, err := entity.New(owner, ns, resMap[ownerRes], entity.WithUID(ownerUID))
 			if err != nil {
 				return err
 			}
 
 			repoName := *repo.Repository.Name
-			repoObj, err := object.New(repoName, ns, resMap[repoRes], object.WithUID(uid), object.WithAttrs(a))
+			repoEnt, err := entity.New(repoName, ns, resMap[repoRes], entity.WithUID(uid), entity.WithAttrs(a))
 			if err != nil {
 				return err
 			}
@@ -226,11 +228,11 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 			}
 			oa.Set("relation", ownerRel)
 
-			if err := ownerObj.Link(repoObj.UID(), space.WithAttrs(oa), space.WithMerge(true)); err != nil {
+			if err := ownerEnt.Link(repoEnt.UID(), space.WithAttrs(oa), space.WithMerge(true)); err != nil {
 				return err
 			}
 
-			if err := top.Add(ctx, ownerObj); err != nil {
+			if err := top.Add(ctx, ownerEnt); err != nil {
 				return err
 			}
 
@@ -241,7 +243,7 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				}
 				a.Set("relation", topicRel)
 
-				if err := repoObj.Link(o.UID(), space.WithAttrs(a)); err != nil {
+				if err := repoEnt.Link(o.UID(), space.WithAttrs(a)); err != nil {
 					return err
 				}
 			}
@@ -253,12 +255,12 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				}
 				a.Set("relation", langRel)
 
-				if err := repoObj.Link(o.UID(), space.WithAttrs(a)); err != nil {
+				if err := repoEnt.Link(o.UID(), space.WithAttrs(a)); err != nil {
 					return err
 				}
 			}
 
-			if err := top.Add(ctx, repoObj, space.WithMerge(true)); err != nil {
+			if err := top.Add(ctx, repoEnt, space.WithMerge(true)); err != nil {
 				return err
 			}
 		}
