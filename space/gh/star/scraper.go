@@ -72,7 +72,7 @@ func defaultParams() []params {
 }
 
 // Plan creates a new space.Plan and adds GitHub stars resources to it.
-func (g *scraper) Plan(ctx context.Context, o space.Origin) (space.Plan, error) {
+func (s *scraper) Plan(ctx context.Context, o space.Origin) (space.Plan, error) {
 	plan, err := plan.New(o)
 	if err != nil {
 		return nil, err
@@ -96,15 +96,15 @@ func (g *scraper) Plan(ctx context.Context, o space.Origin) (space.Plan, error) 
 
 // fetchRepos fetches GitHub repos into reposChan.
 // Fetching can be stopped by closing done channel.
-func (g *scraper) fetchRepos(ctx context.Context, reposChan chan<- []*github.StarredRepository, done <-chan struct{}) error {
+func (s *scraper) fetchRepos(ctx context.Context, reposChan chan<- []*github.StarredRepository, done <-chan struct{}) error {
 	defer close(reposChan)
 
 	opts := &github.ActivityListStarredOptions{
-		ListOptions: github.ListOptions{PerPage: g.opts.Paging},
+		ListOptions: github.ListOptions{PerPage: s.opts.Paging},
 	}
 
 	for {
-		repos, resp, err := g.gh.Activity.ListStarred(ctx, g.opts.User, opts)
+		repos, resp, err := s.gh.Activity.ListStarred(ctx, s.opts.User, opts)
 		if err != nil {
 			return err
 		}
@@ -127,18 +127,11 @@ func (g *scraper) fetchRepos(ctx context.Context, reposChan chan<- []*github.Sta
 	return nil
 }
 
-// mapEntities creates space entities from r with given names in namespace ns and adds them to top.
-// It links all the newly created entities to peer.
-func (g *scraper) mapEntities(ctx context.Context, top space.Top, names []string, ns string, r space.Resource, peer uuid.UID, rel string) ([]space.Entity, error) {
+// addEntities creates space entities from r with given names in namespace ns and adds them to top.
+func (s *scraper) addEntities(ctx context.Context, top space.Top, names []string, ns string, r space.Resource) ([]space.Entity, error) {
 	entities := make([]space.Entity, len(names))
 
 	for i, name := range names {
-		a, err := attrs.New()
-		if err != nil {
-			return nil, err
-		}
-		a.Set("relation", rel)
-
 		// NOTE: we are setting the uid to the name of the entity
 		// this is so we avoid duplicating topics with the same name
 		uid, err := uuid.NewFromString(strings.ToLower(name + "-" + r.Name()))
@@ -148,10 +141,6 @@ func (g *scraper) mapEntities(ctx context.Context, top space.Top, names []string
 
 		entities[i], err = entity.New(strings.ToLower(name), ns, r, entity.WithUID(uid))
 		if err != nil {
-			return nil, err
-		}
-
-		if err := entities[i].Link(peer, space.WithAttrs(a)); err != nil {
 			return nil, err
 		}
 
@@ -169,7 +158,7 @@ func (g *scraper) mapEntities(ctx context.Context, top space.Top, names []string
 // * owner of the repo is linked to the repo
 // * repo topics and langs are added to top
 // * repo is linked to all the topics and langs
-func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.StarredRepository, top space.Top, resMap map[string]space.Resource) error {
+func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.StarredRepository, top space.Top, resMap map[string]space.Resource) error {
 	for repos := range reposChan {
 		// NOTE: we are only iterating over the repos resources
 		// since owners, topics and langs are merely adjacent nodes of repos
@@ -187,18 +176,13 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			topics, err := g.mapEntities(ctx, top, repo.Repository.Topics, ns, resMap[topicRes], uid, topicRel)
+			repoEnt, err := entity.New(*repo.Repository.Name, ns, resMap[repoRes], entity.WithUID(uid), entity.WithAttrs(a))
 			if err != nil {
 				return err
 			}
 
-			var langs []space.Entity
-			if repo.Repository.Language != nil {
-				var err error
-				langs, err = g.mapEntities(ctx, top, []string{*repo.Repository.Language}, ns, resMap[langRes], uid, langRel)
-				if err != nil {
-					return err
-				}
+			if err := top.Add(ctx, repoEnt); err != nil {
+				return err
 			}
 
 			owner := *repo.Repository.Owner.Login
@@ -216,52 +200,54 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			repoName := *repo.Repository.Name
-			repoEnt, err := entity.New(repoName, ns, resMap[repoRes], entity.WithUID(uid), entity.WithAttrs(a))
-			if err != nil {
-				return err
-			}
-
-			oa, err := attrs.New()
-			if err != nil {
-				return err
-			}
-			oa.Set("relation", ownerRel)
-
-			if err := ownerEnt.Link(repoEnt.UID(), space.WithAttrs(oa), space.WithMerge(true)); err != nil {
-				return err
-			}
-
 			if err := top.Add(ctx, ownerEnt); err != nil {
 				return err
 			}
 
-			for _, o := range topics {
+			a, err = attrs.New()
+			if err != nil {
+				return err
+			}
+			a.Set("relation", ownerRel)
+
+			if err := top.Link(ctx, ownerEnt.UID(), repoEnt.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
+				return err
+			}
+
+			topics, err := s.addEntities(ctx, top, repo.Repository.Topics, ns, resMap[topicRes])
+			if err != nil {
+				return err
+			}
+
+			for _, topic := range topics {
 				a, err := attrs.New()
 				if err != nil {
 					return err
 				}
 				a.Set("relation", topicRel)
 
-				if err := repoEnt.Link(o.UID(), space.WithAttrs(a)); err != nil {
+				if err := top.Link(ctx, repoEnt.UID(), topic.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 					return err
 				}
 			}
 
-			for _, o := range langs {
-				a, err := attrs.New()
+			if repo.Repository.Language != nil {
+				langs, err := s.addEntities(ctx, top, []string{*repo.Repository.Language}, ns, resMap[langRes])
 				if err != nil {
 					return err
 				}
-				a.Set("relation", langRel)
 
-				if err := repoEnt.Link(o.UID(), space.WithAttrs(a)); err != nil {
-					return err
+				for _, lang := range langs {
+					a, err := attrs.New()
+					if err != nil {
+						return err
+					}
+					a.Set("relation", langRel)
+
+					if err := top.Link(ctx, repoEnt.UID(), lang.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
+						return err
+					}
 				}
-			}
-
-			if err := top.Add(ctx, repoEnt, space.WithMerge(true)); err != nil {
-				return err
 			}
 		}
 	}
@@ -269,6 +255,8 @@ func (g *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 	return nil
 }
 
+// getResource queries p with query params from qp and returns the result.
+// getResource returns a single resource matching the query params.
 func getResource(ctx context.Context, p space.Plan, qp params) (space.Resource, error) {
 	query := base.Build().
 		Add(predicate.Name(qp.name)).
@@ -276,7 +264,7 @@ func getResource(ctx context.Context, p space.Plan, qp params) (space.Resource, 
 		Add(predicate.Version(qp.version)).
 		Add(predicate.Kind(qp.kind))
 
-	// NOTE: this must return a single result
+	// NOTE: this must return a single value
 	// for each of the queried resources
 	rx, err := p.Get(ctx, query)
 	if err != nil {
@@ -295,7 +283,7 @@ func getResources(ctx context.Context, p space.Plan, qp ...params) (map[string]s
 			return nil, err
 		}
 		// NOTE: this is safe as getResource
-		// only returns a single return value
+		// only returns a single value
 		rx[r.Name()] = r
 	}
 
@@ -304,7 +292,7 @@ func getResources(ctx context.Context, p space.Plan, qp ...params) (map[string]s
 
 // Map builds a map of GH stars space topology and returns it.
 // It returns error if any of the API calls fails with error.
-func (g *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
+func (s *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 	top, err := top.New(p)
 	if err != nil {
 		return nil, err
@@ -317,7 +305,7 @@ func (g *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 		return nil, err
 	}
 
-	reposChan := make(chan []*github.StarredRepository, g.opts.Workers)
+	reposChan := make(chan []*github.StarredRepository, s.opts.Workers)
 	errChan := make(chan error)
 	done := make(chan struct{})
 
@@ -325,12 +313,12 @@ func (g *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 
 	// launch repo processing workers
 	// these are building the graph
-	for i := 0; i < g.opts.Workers; i++ {
+	for i := 0; i < s.opts.Workers; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			select {
-			case errChan <- g.mapRepos(ctx, reposChan, top, rx):
+			case errChan <- s.mapRepos(ctx, reposChan, top, rx):
 			case <-done:
 			case <-ctx.Done():
 			}
@@ -341,7 +329,7 @@ func (g *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 	go func() {
 		defer wg.Done()
 		select {
-		case errChan <- g.fetchRepos(ctx, reposChan, done):
+		case errChan <- s.fetchRepos(ctx, reposChan, done):
 		case <-ctx.Done():
 		}
 	}()
