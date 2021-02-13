@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Auth for dgraph authentication
+// Auth credentials
 type Auth struct {
 	User   string
 	Passwd string
@@ -20,7 +20,9 @@ type Client struct {
 	conn *grpc.ClientConn
 }
 
-// NewClient creates new dgraph client and returns it.
+// NewClient creates a new dgraph client and returns it.
+// TODO: consider creating Client interface and only expose some
+// of the dgo.Client methods; make it easier to mock
 func NewClient(target string, opts ...Option) (*Client, error) {
 	dopts := Options{}
 	for _, apply := range opts {
@@ -53,7 +55,7 @@ func NewClient(target string, opts ...Option) (*Client, error) {
 	}, nil
 }
 
-// Close closes dgraph connection
+// Close closes dgraph connection.
 func (c *Client) Close() error {
 	return c.conn.Close()
 }

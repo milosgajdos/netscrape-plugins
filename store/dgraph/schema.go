@@ -1,20 +1,30 @@
 package dgraph
 
-// Schema is dgraph DQL schema
+// Schema is DQL schema
 const Schema = `
 	type Entity {
 		xid
 		name
-		kind
 		namespace
 		created_at
-		link
+		links
+	}
+
+	type Resource {
+		name
+		group
+		version
+		kind
+		namespaced
 	}
 
 	xid: string @index(exact) .
 	name: string @index(exact) .
-	kind: string @index(exact) .
 	namespace: string @index(exact) .
 	created_at : datetime @index(hour) .
-	link: [uid] @count @reverse .
+	links: [uid] @count @reverse .
+	group: string @index(exact) .
+	version: string @index(exact) .
+	kind: string @index(exact) .
+	namespaced: bool .
 `
