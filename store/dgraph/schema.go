@@ -6,7 +6,6 @@ const Schema = `
 		xid
 		name
 		namespace
-		created_at
 		links
 	}
 
@@ -21,8 +20,8 @@ const Schema = `
 	xid: string @index(exact) .
 	name: string @index(exact) .
 	namespace: string @index(exact) .
-	created_at : datetime @index(hour) .
 	links: [uid] @count @reverse .
+	created_at : datetime @index(hour) .
 	group: string @index(exact) .
 	version: string @index(exact) .
 	kind: string @index(exact) .

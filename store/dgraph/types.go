@@ -1,7 +1,5 @@
 package dgraph
 
-import "time"
-
 type Resource struct {
 	Name       string            `json:"name,omitempty"`
 	Group      string            `json:"group,omitempty"`
@@ -19,11 +17,11 @@ type Entity struct {
 	Namespace string            `json:"namespace,omitempty"`
 	Resource  Resource          `json:"resource,omitempty"`
 	Links     []Entity          `json:"links,omitempty"`
-	CreatedAt *time.Time        `json:"created_at,omitempty"`
 	Attrs     map[string]string `json:"attrs,omitempty"`
 	DType     []string          `json:"dgraph.type,omitempty"`
 
 	// Links facets
+	LUID     string  `json:"links|uid,omitempty"`
 	Relation string  `json:"links|relation,omitempty"`
 	Weight   float64 `json:"links|weight,omitempty"`
 }
