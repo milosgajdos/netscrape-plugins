@@ -1,15 +1,17 @@
 package dgraph
 
-// Schema is DQL schema
-const Schema = `
-	type Entity {
+// SpaceSchema is space DQL schema
+const SpaceSchema = `
+	type Object {
 		xid
 		name
 		namespace
+		resource
 		links
 	}
 
 	type Resource {
+		xid
 		name
 		group
 		version
@@ -26,4 +28,5 @@ const Schema = `
 	version: string @index(exact) .
 	kind: string @index(exact) .
 	namespaced: bool .
+	resource: uid @count @reverse .
 `

@@ -1,6 +1,13 @@
 package dgraph
 
+const (
+	ObjectDType   = "Object"
+	ResourceDType = "Resource"
+)
+
 type Resource struct {
+	UID        string            `json:"uid,omitempty"`
+	XID        string            `json:"xid,omitempty"`
 	Name       string            `json:"name,omitempty"`
 	Group      string            `json:"group,omitempty"`
 	Version    string            `json:"version,omitempty"`
@@ -10,13 +17,13 @@ type Resource struct {
 	DType      []string          `json:"dgraph.type,omitempty"`
 }
 
-type Entity struct {
+type Object struct {
 	UID       string            `json:"uid,omitempty"`
 	XID       string            `json:"xid,omitempty"`
 	Name      string            `json:"name,omitempty"`
 	Namespace string            `json:"namespace,omitempty"`
-	Resource  Resource          `json:"resource,omitempty"`
-	Links     []Entity          `json:"links,omitempty"`
+	Resource  *Resource         `json:"resource,omitempty"`
+	Links     []Object          `json:"links,omitempty"`
 	Attrs     map[string]string `json:"attrs,omitempty"`
 	DType     []string          `json:"dgraph.type,omitempty"`
 
