@@ -1,6 +1,7 @@
 package dgraph
 
 import (
+	"context"
 	"strconv"
 
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
@@ -15,7 +16,7 @@ const (
 )
 
 // linkRequest link from and to Objects. No other types can be linked.
-func (s *Store) linkRequest(from, to uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
+func (s *Store) linkRequest(ctx context.Context, from, to uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
 	q := `
 	{
 		var(func: eq(xid, "` + from.Value() + `")) @filter(type(Object)) {

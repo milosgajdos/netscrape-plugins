@@ -1,7 +1,7 @@
 package dgraph
 
-// SpaceSchema is space DQL schema
-const SpaceSchema = `
+// SpaceDQLSchema is space DQL schema
+const SpaceDQLSchema = `
 	type Object {
 		xid
 		name

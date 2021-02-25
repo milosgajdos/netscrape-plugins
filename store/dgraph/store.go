@@ -5,7 +5,6 @@ package dgraph
 import (
 	"context"
 	"fmt"
-	"html/template"
 
 	"github.com/milosgajdos/netscrape/pkg/store"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
@@ -35,7 +34,7 @@ func (s *Store) Add(ctx context.Context, e store.Entity, opts ...store.Option) e
 		apply(&sopts)
 	}
 
-	req, err := s.addRequest(e)
+	req, err := s.addRequest(ctx, e)
 	if err != nil {
 		return err
 	}
@@ -47,6 +46,35 @@ func (s *Store) Add(ctx context.Context, e store.Entity, opts ...store.Option) e
 	return nil
 }
 
+// Get Entity from store.
+func (s *Store) Get(ctx context.Context, uid uuid.UID, opts ...store.Option) (store.Entity, error) {
+	sopts := store.Options{}
+	for _, apply := range opts {
+		apply(&sopts)
+	}
+
+	req, err := s.getRequest(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.c.NewTxn().Do(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("txn Get: %w", err)
+	}
+
+	ents, err := DecodeJSONEntity(resp.Json, GetOp)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ents) > 2 {
+		panic("duplicate nodes")
+	}
+
+	return ents[0], nil
+}
+
 // Delete Entity from store.
 func (s *Store) Delete(ctx context.Context, uid uuid.UID, opts ...store.Option) error {
 	sopts := store.Options{}
@@ -54,7 +82,7 @@ func (s *Store) Delete(ctx context.Context, uid uuid.UID, opts ...store.Option) 
 		apply(&sopts)
 	}
 
-	req, err := s.delRequest(uid)
+	req, err := s.delRequest(ctx, uid)
 	if err != nil {
 		return err
 	}
@@ -68,7 +96,7 @@ func (s *Store) Delete(ctx context.Context, uid uuid.UID, opts ...store.Option) 
 
 // Link two entities in store.
 func (s *Store) Link(ctx context.Context, from, to uuid.UID, opts ...store.Option) error {
-	req, err := s.linkRequest(from, to, opts...)
+	req, err := s.linkRequest(ctx, from, to, opts...)
 	if err != nil {
 		return err
 	}
@@ -82,7 +110,7 @@ func (s *Store) Link(ctx context.Context, from, to uuid.UID, opts ...store.Optio
 
 // Unlink two entities in store.
 func (s *Store) Unlink(ctx context.Context, from, to uuid.UID, opts ...store.Option) error {
-	req, err := s.unlinkRequest(from, to, opts...)
+	req, err := s.unlinkRequest(ctx, from, to, opts...)
 	if err != nil {
 		return err
 	}
@@ -92,9 +120,4 @@ func (s *Store) Unlink(ctx context.Context, from, to uuid.UID, opts ...store.Opt
 	}
 
 	return nil
-}
-
-// Query returns entity matching the query executed with the given vars.
-func (s *Store) Query(ctx context.Context, queryTpl template.Template, vars map[string]string) ([]store.Entity, error) {
-	return nil, store.ErrNotImplemented
 }

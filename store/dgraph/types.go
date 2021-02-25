@@ -1,8 +1,26 @@
 package dgraph
 
 const (
-	ObjectDType   = "Object"
+	// ObjectDType is Object entity dgraph.dtype
+	ObjectDType = "Object"
+	// ResourceDType is Resource entity dgraph.dtype
 	ResourceDType = "Resource"
+)
+
+// Op is dgraph operation.
+type Op int
+
+const (
+	// AddOp is add operation
+	AddOp Op = iota
+	// DelOp is delete operation
+	DelOp
+	// GetOp is get operation
+	GetOp
+	// LinkOp is link operation
+	LinkOp
+	// UnlinkOp is unlink operation
+	UnlinkOp
 )
 
 type Resource struct {

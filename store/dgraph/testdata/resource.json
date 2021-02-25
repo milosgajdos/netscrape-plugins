@@ -1,0 +1,13 @@
+{
+	"entity": [{
+		"version": "nodeResVersion",
+		"name": "nodeResName",
+		"namespaced": true,
+		"xid": "nodeResUID",
+		"group": "nodeResGroup",
+		"kind": "nodeResKind",
+		"dgraph.type": [
+			"Resource"
+		]
+	}]
+}

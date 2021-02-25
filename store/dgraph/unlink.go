@@ -1,13 +1,15 @@
 package dgraph
 
 import (
+	"context"
+
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
 	"github.com/milosgajdos/netscrape/pkg/store"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
 )
 
 // unlinkRequest link from and to Objects. No other types can be linked.
-func (s *Store) unlinkRequest(from, to uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
+func (s *Store) unlinkRequest(ctx context.Context, from, to uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
 	q := `
 	{
 		var(func: eq(xid, "` + from.Value() + `")) @filter(type(Object)) {

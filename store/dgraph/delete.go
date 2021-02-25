@@ -1,11 +1,13 @@
 package dgraph
 
 import (
+	"context"
+
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
 )
 
-func (s *Store) delRequest(uid uuid.UID) (*dgapi.Request, error) {
+func (s *Store) delRequest(ctx context.Context, uid uuid.UID) (*dgapi.Request, error) {
 	q := `
 	{
 		node(func: eq(xid, "` + uid.Value() + `")) @filter(NOT type(Resource) OR eq(count(~resource), 0)) {

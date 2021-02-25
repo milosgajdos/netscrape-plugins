@@ -1,23 +1,25 @@
 package dgraph
 
 import (
+	"context"
+
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
 	"github.com/milosgajdos/netscrape/pkg/space"
 	"github.com/milosgajdos/netscrape/pkg/store"
 )
 
-func (s *Store) addRequest(e store.Entity) (*dgapi.Request, error) {
+func (s *Store) addRequest(ctx context.Context, e store.Entity) (*dgapi.Request, error) {
 	switch v := e.(type) {
 	case space.Object:
-		return s.addObjectRequest(v)
+		return s.addObjectRequest(ctx, v)
 	case space.Resource:
-		return s.addResourceRequest(v)
+		return s.addResourceRequest(ctx, v)
 	default:
 		return nil, store.ErrUnsupported
 	}
 }
 
-func (s *Store) addResourceRequest(r space.Resource) (*dgapi.Request, error) {
+func (s *Store) addResourceRequest(ctx context.Context, r space.Resource) (*dgapi.Request, error) {
 	query := `
 	{
 		resource(func: eq(xid, "` + r.UID().Value() + `")) {
@@ -35,13 +37,13 @@ func (s *Store) addResourceRequest(r space.Resource) (*dgapi.Request, error) {
 		Kind:       r.Kind(),
 		Namespaced: r.Namespaced(),
 		Attrs:      AttrsToMap(r.Attrs()),
-		DType:      []string{"Resource"},
+		DType:      []string{ResourceDType},
 	}
 
 	return UpsertReqJSON(AddOp, res, query, "")
 }
 
-func (s *Store) addObjectRequest(o space.Object) (*dgapi.Request, error) {
+func (s *Store) addObjectRequest(ctx context.Context, o space.Object) (*dgapi.Request, error) {
 	query := `
 	{
 		object(func: eq(xid, "` + o.UID().Value() + `")) {
@@ -68,10 +70,10 @@ func (s *Store) addObjectRequest(o space.Object) (*dgapi.Request, error) {
 			Kind:       o.Resource().Kind(),
 			Namespaced: o.Resource().Namespaced(),
 			Attrs:      AttrsToMap(o.Resource().Attrs()),
-			DType:      []string{"Resource"},
+			DType:      []string{ResourceDType},
 		},
 		Attrs: AttrsToMap(o.Attrs()),
-		DType: []string{"Object"},
+		DType: []string{ObjectDType},
 	}
 
 	return UpsertReqJSON(AddOp, obj, query, "")
