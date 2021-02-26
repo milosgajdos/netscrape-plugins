@@ -6,11 +6,44 @@ import (
 	"testing"
 
 	"github.com/milosgajdos/netscrape/pkg/attrs"
+	"github.com/milosgajdos/netscrape/pkg/space"
+	"github.com/milosgajdos/netscrape/pkg/space/object"
+	"github.com/milosgajdos/netscrape/pkg/space/resource"
+	"github.com/milosgajdos/netscrape/pkg/uuid"
 )
 
 const (
 	testDir = "testdata"
+
+	resUID     = "nodeResUID"
+	resName    = "nodeResName"
+	resGroup   = "nodeResGroup"
+	resVersion = "nodeResVersion"
+	resKind    = "nodeResKind"
 )
+
+func newTestResource(name, group, version, kind string, namespaced bool, opts ...resource.Option) (space.Resource, error) {
+	uid, err := uuid.NewFromString(resUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return resource.New(name, group, version, kind, namespaced, resource.WithUID(uid))
+}
+
+func newTestObject(entName, entNs string) (space.Object, error) {
+	r, err := newTestResource(resName, resGroup, resVersion, resKind, true)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, err := uuid.NewFromString(entName + "/" + entNs)
+	if err != nil {
+		return nil, err
+	}
+
+	return object.New(entName, entNs, r, object.WithUID(uid))
+}
 
 func TestAttrsToMap(t *testing.T) {
 	a, err := attrs.New()
@@ -56,7 +89,7 @@ func TestDecodeJSONEntity(t *testing.T) {
 			t.Fatalf("failed opening file: %v", err)
 		}
 
-		ents, err := DecodeJSONEntity(data, GetOp)
+		ents, err := decodeJSONEntity(data, GetOp)
 		if err != nil {
 			t.Fatalf("failed decoding data: %v", err)
 		}

@@ -8,6 +8,8 @@ import (
 
 	"github.com/milosgajdos/netscrape/pkg/store"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
+
+	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
 )
 
 // Store is dgraph store
@@ -16,10 +18,15 @@ type Store struct {
 }
 
 // New creates new dgraph store and returns it.
-func NewStore(c *Client, opts ...Option) (*Store, error) {
+func NewStore(dsn string, opts ...Option) (*Store, error) {
 	sopts := Options{}
 	for _, apply := range opts {
 		apply(&sopts)
+	}
+
+	c, err := NewClient(dsn, opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Store{
@@ -27,20 +34,25 @@ func NewStore(c *Client, opts ...Option) (*Store, error) {
 	}, nil
 }
 
+// Alter alters dgraph database with the given operation.
+func (s *Store) Alter(ctx context.Context, op *dgapi.Operation) error {
+	return s.c.Alter(ctx, op)
+}
+
+// Close closes store.
+func (s *Store) Close() error {
+	return s.c.Close()
+}
+
 // Add Entity to store.
 func (s *Store) Add(ctx context.Context, e store.Entity, opts ...store.Option) error {
-	sopts := store.Options{}
-	for _, apply := range opts {
-		apply(&sopts)
-	}
-
-	req, err := s.addRequest(ctx, e)
+	req, err := s.addRequest(ctx, e, opts...)
 	if err != nil {
 		return err
 	}
 
 	if _, err := s.c.NewTxn().Do(ctx, req); err != nil {
-		return fmt.Errorf("txn Add: %w", err)
+		return fmt.Errorf("txn.Add: %w", err)
 	}
 
 	return nil
@@ -48,11 +60,6 @@ func (s *Store) Add(ctx context.Context, e store.Entity, opts ...store.Option) e
 
 // Get Entity from store.
 func (s *Store) Get(ctx context.Context, uid uuid.UID, opts ...store.Option) (store.Entity, error) {
-	sopts := store.Options{}
-	for _, apply := range opts {
-		apply(&sopts)
-	}
-
 	req, err := s.getRequest(ctx, uid)
 	if err != nil {
 		return nil, err
@@ -60,12 +67,16 @@ func (s *Store) Get(ctx context.Context, uid uuid.UID, opts ...store.Option) (st
 
 	resp, err := s.c.NewTxn().Do(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("txn Get: %w", err)
+		return nil, fmt.Errorf("txn.Get: %w", err)
 	}
 
-	ents, err := DecodeJSONEntity(resp.Json, GetOp)
+	ents, err := decodeJSONEntity(resp.Json, GetOp)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(ents) == 0 {
+		return nil, store.ErrNodeNotFound
 	}
 
 	if len(ents) > 2 {
@@ -77,18 +88,13 @@ func (s *Store) Get(ctx context.Context, uid uuid.UID, opts ...store.Option) (st
 
 // Delete Entity from store.
 func (s *Store) Delete(ctx context.Context, uid uuid.UID, opts ...store.Option) error {
-	sopts := store.Options{}
-	for _, apply := range opts {
-		apply(&sopts)
-	}
-
-	req, err := s.delRequest(ctx, uid)
+	req, err := s.deleteRequest(ctx, uid)
 	if err != nil {
 		return err
 	}
 
 	if _, err := s.c.NewTxn().Do(ctx, req); err != nil {
-		return fmt.Errorf("txn Delete: %w", err)
+		return fmt.Errorf("txn.Delete: %w", err)
 	}
 
 	return nil
@@ -102,7 +108,7 @@ func (s *Store) Link(ctx context.Context, from, to uuid.UID, opts ...store.Optio
 	}
 
 	if _, err := s.c.NewTxn().Do(ctx, req); err != nil {
-		return fmt.Errorf("txn Link: %w", err)
+		return fmt.Errorf("txn.Link: %w", err)
 	}
 
 	return nil
@@ -116,7 +122,7 @@ func (s *Store) Unlink(ctx context.Context, from, to uuid.UID, opts ...store.Opt
 	}
 
 	if _, err := s.c.NewTxn().Do(ctx, req); err != nil {
-		return fmt.Errorf("txn Unlink: %w", err)
+		return fmt.Errorf("txn.Unlink: %w", err)
 	}
 
 	return nil

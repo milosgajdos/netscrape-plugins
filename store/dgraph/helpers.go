@@ -35,9 +35,9 @@ func contains(a []string, x string) bool {
 	return false
 }
 
-// UpsertReqJSON encodes e into JSON and returns Upsert mutation request with given query and cond.
+// upsertReqJSON encodes e into JSON and returns Upsert mutation request with given query and cond.
 // It returns error if the object failed to be encoded into JSON.
-func UpsertReqJSON(op Op, e interface{}, query, cond string) (*dgapi.Request, error) {
+func upsertReqJSON(op Op, e interface{}, query, cond string) (*dgapi.Request, error) {
 	mu, err := MutationJSON(op, e, cond)
 	if err != nil {
 		return nil, err
@@ -175,9 +175,9 @@ func decodeJSONGetEntity(b []byte) ([]store.Entity, error) {
 	return ents, nil
 }
 
-// DecodeJSONEntity accepts JSON response and returns a slice of store.Entity
+// decodeJSONEntity accepts JSON response and returns a slice of store.Entity
 // NOTE: this is a temporary disgusting hack function; I need to take a cold shower after this.
-func DecodeJSONEntity(b []byte, Op Op) ([]store.Entity, error) {
+func decodeJSONEntity(b []byte, Op Op) ([]store.Entity, error) {
 	switch Op {
 	case GetOp:
 		return decodeJSONGetEntity(b)
