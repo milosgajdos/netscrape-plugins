@@ -7,6 +7,16 @@ on:
     branches: [ main ]
 
 jobs:
+  services:
+    dgraph:
+      image: dgraph/standalone:v20.11.2
+      volumes:
+        - /tmp/data:/dgraph
+      ports:
+        - 5080:5080
+        - 6080:6080
+        - 8080:8080
+        - 9080:9080
 
   ci:
     name: Run CI
@@ -46,9 +56,6 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.go }}-go-ci-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.go }}-go-ci
-
-    - name: Start dependencies
-      run: docker-compose -f store/dgraph/docker-compose.yml up -d
 
     - name: Get dependencies
       run: |
