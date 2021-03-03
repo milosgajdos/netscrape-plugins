@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
+	"github.com/milosgajdos/netscrape/pkg/space"
 	"github.com/milosgajdos/netscrape/pkg/store"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
 	"google.golang.org/grpc"
@@ -115,6 +116,10 @@ func TestGet(t *testing.T) {
 
 		if !reflect.DeepEqual(e.UID(), obj.UID()) {
 			t.Fatalf("got: %s, want: %s", e.UID(), obj.UID())
+		}
+
+		if !reflect.DeepEqual(obj, e.(space.Object)) {
+			t.Fatalf("expected: %v, got: %v", obj, e.(space.Object))
 		}
 	})
 
