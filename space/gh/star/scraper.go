@@ -209,6 +209,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 			a.Set(attrs.Relation, ownerRel)
+			a.Set(attrs.DOTLabel, ownerRel)
 
 			if err := top.Link(ctx, ownerEnt.UID(), repoEnt.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 				return err
@@ -225,6 +226,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 					return err
 				}
 				a.Set(attrs.Relation, topicRel)
+				a.Set(attrs.DOTLabel, ownerRel)
 
 				if err := top.Link(ctx, repoEnt.UID(), topic.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 					return err
@@ -243,6 +245,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 						return err
 					}
 					a.Set(attrs.Relation, langRel)
+					a.Set(attrs.DOTLabel, ownerRel)
 
 					if err := top.Link(ctx, repoEnt.UID(), lang.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 						return err
