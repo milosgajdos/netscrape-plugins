@@ -10,7 +10,7 @@ import (
 	"github.com/milosgajdos/netscrape/pkg/query/base"
 	"github.com/milosgajdos/netscrape/pkg/query/predicate"
 	"github.com/milosgajdos/netscrape/pkg/space"
-	"github.com/milosgajdos/netscrape/pkg/space/entity"
+	"github.com/milosgajdos/netscrape/pkg/space/object"
 	"github.com/milosgajdos/netscrape/pkg/space/plan"
 	"github.com/milosgajdos/netscrape/pkg/space/resource"
 	"github.com/milosgajdos/netscrape/pkg/space/top"
@@ -139,7 +139,7 @@ func (s *scraper) addEntities(ctx context.Context, top space.Top, names []string
 			return nil, err
 		}
 
-		entities[i], err = entity.New(strings.ToLower(name), ns, r, entity.WithUID(uid))
+		entities[i], err = object.New(strings.ToLower(name), ns, r, object.WithUID(uid))
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +176,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			repoEnt, err := entity.New(*repo.Repository.Name, ns, resMap[repoRes], entity.WithUID(uid), entity.WithAttrs(a))
+			repoEnt, err := object.New(*repo.Repository.Name, ns, resMap[repoRes], object.WithUID(uid), object.WithAttrs(a))
 			if err != nil {
 				return err
 			}
@@ -195,7 +195,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			ownerEnt, err := entity.New(owner, ns, resMap[ownerRes], entity.WithUID(ownerUID))
+			ownerEnt, err := object.New(owner, ns, resMap[ownerRes], object.WithUID(ownerUID))
 			if err != nil {
 				return err
 			}
@@ -208,7 +208,8 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 			if err != nil {
 				return err
 			}
-			a.Set("relation", ownerRel)
+			a.Set(attrs.Relation, ownerRel)
+			a.Set(attrs.DOTLabel, ownerRel)
 
 			if err := top.Link(ctx, ownerEnt.UID(), repoEnt.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 				return err
@@ -224,7 +225,8 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				if err != nil {
 					return err
 				}
-				a.Set("relation", topicRel)
+				a.Set(attrs.Relation, topicRel)
+				a.Set(attrs.DOTLabel, ownerRel)
 
 				if err := top.Link(ctx, repoEnt.UID(), topic.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 					return err
@@ -242,7 +244,8 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 					if err != nil {
 						return err
 					}
-					a.Set("relation", langRel)
+					a.Set(attrs.Relation, langRel)
+					a.Set(attrs.DOTLabel, ownerRel)
 
 					if err := top.Link(ctx, repoEnt.UID(), lang.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
 						return err
@@ -293,7 +296,7 @@ func getResources(ctx context.Context, p space.Plan, qp ...params) (map[string]s
 // Map builds a map of GH stars space topology and returns it.
 // It returns error if any of the API calls fails with error.
 func (s *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
-	top, err := top.New(p)
+	top, err := top.New()
 	if err != nil {
 		return nil, err
 	}
