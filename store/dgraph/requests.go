@@ -6,6 +6,7 @@ import (
 
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
 	"github.com/milosgajdos/netscrape/pkg/attrs"
+	"github.com/milosgajdos/netscrape/pkg/entity"
 	"github.com/milosgajdos/netscrape/pkg/space"
 	"github.com/milosgajdos/netscrape/pkg/store"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
@@ -19,7 +20,7 @@ const (
 )
 
 // addRequest creates a new dgraph API request for adding the given entity and returns it.
-// If e is neither space.Object nor space.Resource it returns error.
+// It returns err if e is neither space.Entity nor space.Resource or if they fail to serialised to JSON.
 func (s *Store) addRequest(ctx context.Context, e store.Entity, opts ...store.Option) (*dgapi.Request, error) {
 	sopts := store.Options{}
 	for _, apply := range opts {
@@ -27,8 +28,8 @@ func (s *Store) addRequest(ctx context.Context, e store.Entity, opts ...store.Op
 	}
 
 	switch v := e.(type) {
-	case space.Object:
-		return s.addObjectRequest(ctx, v)
+	case space.Entity:
+		return s.addEntityRequest(ctx, v)
 	case space.Resource:
 		return s.addResourceRequest(ctx, v)
 	default:
@@ -42,59 +43,62 @@ func (s *Store) addResourceRequest(ctx context.Context, r space.Resource, opts .
 	query := `
 	{
 		resource(func: eq(xid, "` + r.UID().Value() + `")) {
-			u as uid
+			r as uid
 	        }
 	}
 	`
 
 	res := &Resource{
-		UID:        "uid(u)",
+		UID:        "uid(r)",
 		XID:        r.UID().Value(),
+		Type:       r.Type().String(),
 		Name:       r.Name(),
 		Group:      r.Group(),
 		Version:    r.Version(),
 		Kind:       r.Kind(),
 		Namespaced: r.Namespaced(),
 		Attrs:      AttrsToMap(r.Attrs()),
-		DType:      []string{ResourceDType},
+		DType:      []string{entity.ResourceType.String()},
 	}
 
 	return upsertReqJSON(AddOp, res, query, "")
 }
 
-// addResourceRequest creates a dgraph API request for adding space.Object and returns it.
-// It returns error if r fails to be serialised as a JSON object.
-func (s *Store) addObjectRequest(ctx context.Context, o space.Object, opts ...store.Option) (*dgapi.Request, error) {
+// addResourceRequest creates a dgraph API request for adding space.Entity and returns it.
+// It returns error if entity fails to be serialised into JSON.
+func (s *Store) addEntityRequest(ctx context.Context, e space.Entity, opts ...store.Option) (*dgapi.Request, error) {
 	query := `
 	{
-		object(func: eq(xid, "` + o.UID().Value() + `")) {
-			o as uid
+		entity(func: eq(xid, "` + e.UID().Value() + `")) {
+			e as uid
 		}
 
-		resource(func: eq(xid, "` + o.Resource().UID().Value() + `")) {
+		resource(func: eq(xid, "` + e.Resource().UID().Value() + `")) {
 			r as uid
 		}
 	}
 	`
 
-	obj := &Object{
-		UID:       "uid(o)",
-		XID:       o.UID().Value(),
-		Name:      o.Name(),
-		Namespace: o.Namespace(),
+	obj := &Entity{
+		UID:       "uid(e)",
+		XID:       e.UID().Value(),
+		Type:      e.Type().String(),
+		Name:      e.Name(),
+		Namespace: e.Namespace(),
 		Resource: &Resource{
 			UID:        "uid(r)",
-			XID:        o.Resource().UID().Value(),
-			Name:       o.Resource().Name(),
-			Group:      o.Resource().Group(),
-			Version:    o.Resource().Version(),
-			Kind:       o.Resource().Kind(),
-			Namespaced: o.Resource().Namespaced(),
-			Attrs:      AttrsToMap(o.Resource().Attrs()),
-			DType:      []string{ResourceDType},
+			XID:        e.Resource().UID().Value(),
+			Type:       e.Resource().Type().String(),
+			Name:       e.Resource().Name(),
+			Group:      e.Resource().Group(),
+			Version:    e.Resource().Version(),
+			Kind:       e.Resource().Kind(),
+			Namespaced: e.Resource().Namespaced(),
+			Attrs:      AttrsToMap(e.Resource().Attrs()),
+			DType:      []string{entity.ResourceType.String()},
 		},
-		Attrs: AttrsToMap(o.Attrs()),
-		DType: []string{ObjectDType},
+		Attrs: AttrsToMap(e.Attrs()),
+		DType: []string{entity.EntityType.String()},
 	}
 
 	return upsertReqJSON(AddOp, obj, query, "")
@@ -103,11 +107,6 @@ func (s *Store) addObjectRequest(ctx context.Context, o space.Object, opts ...st
 // getRequest creates a dgraph API request for getting entity with the given uid and returns it.
 // The returned request allows for read only transactions.
 func (s *Store) getRequest(ctx context.Context, uid uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
-	sopts := store.Options{}
-	for _, apply := range opts {
-		apply(&sopts)
-	}
-
 	q := `
 	{
 		entity(func: eq(xid, "` + uid.Value() + `")) {
@@ -130,11 +129,6 @@ func (s *Store) getRequest(ctx context.Context, uid uuid.UID, opts ...store.Opti
 // deleteRequest creates a dgraph API request for deleting the entity with the given uid and returns it
 // It returns error if the delete query fails to be serialized to JSON.
 func (s *Store) deleteRequest(ctx context.Context, uid uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
-	sopts := store.Options{}
-	for _, apply := range opts {
-		apply(&sopts)
-	}
-
 	q := `
 	{
 		node(func: eq(xid, "` + uid.Value() + `")) @filter(NOT type(Resource) OR eq(count(~resource), 0)) {
@@ -150,7 +144,8 @@ func (s *Store) deleteRequest(ctx context.Context, uid uuid.UID, opts ...store.O
 	return upsertReqJSON(DelOp, node, q, cond)
 }
 
-// linkRequest link from and to Objects. No other types can be linked.
+// linkRequest creates dgraph API request to link from and to entities stored in the dgraph database.
+// The link is created only if both from and to nodes exist and are both of Entity types.
 func (s *Store) linkRequest(ctx context.Context, from, to uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
 	sopts := store.Options{}
 	for _, apply := range opts {
@@ -159,11 +154,11 @@ func (s *Store) linkRequest(ctx context.Context, from, to uuid.UID, opts ...stor
 
 	q := `
 	{
-		var(func: eq(xid, "` + from.Value() + `")) @filter(type(Object)) {
+		var(func: eq(xid, "` + from.Value() + `")) @filter(type(Entity)) {
 			from as uid
 		}
 
-		var(func: eq(xid, "` + to.Value() + `")) @filter(type(Object)) {
+		var(func: eq(xid, "` + to.Value() + `")) @filter(type(Entity)) {
 			to as uid
 		}
 	}
@@ -184,11 +179,11 @@ func (s *Store) linkRequest(ctx context.Context, from, to uuid.UID, opts ...stor
 		}
 	}
 
-	link := &Object{
+	link := &Entity{
 		UID:   "uid(from)",
-		DType: []string{"Object"},
-		Links: []Object{
-			{UID: "uid(to)", DType: []string{"Object"}, Relation: relation, Weight: weight},
+		DType: []string{entity.EntityType.String()},
+		Links: []Entity{
+			{UID: "uid(to)", DType: []string{entity.EntityType.String()}, Relation: relation, Weight: weight},
 		},
 	}
 
@@ -197,15 +192,16 @@ func (s *Store) linkRequest(ctx context.Context, from, to uuid.UID, opts ...stor
 	return upsertReqJSON(LinkOp, link, q, cond)
 }
 
-// unlinkRequest link from and to Objects. No other types can be linked.
+// unlinkRequest creates dgraph API request to remove the link between and to entities stored in the dgraph database.
+// The link is removed only if both from and to nodes exist, are both of Entity types and there is a link between them.
 func (s *Store) unlinkRequest(ctx context.Context, from, to uuid.UID, opts ...store.Option) (*dgapi.Request, error) {
 	q := `
 	{
-		var(func: eq(xid, "` + from.Value() + `")) @filter(type(Object)) {
+		var(func: eq(xid, "` + from.Value() + `")) @filter(type(Entity)) {
 			from as uid
 		}
 
-		var(func: eq(xid, "` + to.Value() + `")) @filter(type(Object)) {
+		var(func: eq(xid, "` + to.Value() + `")) @filter(type(Entity)) {
 			to as uid
 		}
 	}
@@ -216,9 +212,9 @@ func (s *Store) unlinkRequest(ctx context.Context, from, to uuid.UID, opts ...st
 		apply(&sopts)
 	}
 
-	link := &Object{
+	link := &Entity{
 		UID: "uid(from)",
-		Links: []Object{
+		Links: []Entity{
 			{UID: "uid(to)"},
 		},
 	}

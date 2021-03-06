@@ -47,8 +47,8 @@ github.com/google/uuid v1.2.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
-github.com/milosgajdos/netscrape v0.0.5-0.20210303202446-8dd2f3abecfd h1:+Hsyd1gcXyeacNz0lFhi7hVZr5OHW/4YaA1A3htCjRE=
-github.com/milosgajdos/netscrape v0.0.5-0.20210303202446-8dd2f3abecfd/go.mod h1:tZuYOuxy0jomiNHlavIKzDrDo/wks4ply+KNKE/zFJM=
+github.com/milosgajdos/netscrape v0.0.5-0.20210306112842-a0a6c175ce1b h1:Y8D31vDfHBYsj5jTJkBhEopgU3l0O3TvZ4ZokivoEDU=
+github.com/milosgajdos/netscrape v0.0.5-0.20210306112842-a0a6c175ce1b/go.mod h1:tZuYOuxy0jomiNHlavIKzDrDo/wks4ply+KNKE/zFJM=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

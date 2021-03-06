@@ -7,7 +7,7 @@ import (
 
 	"github.com/milosgajdos/netscrape/pkg/attrs"
 	"github.com/milosgajdos/netscrape/pkg/space"
-	"github.com/milosgajdos/netscrape/pkg/space/object"
+	"github.com/milosgajdos/netscrape/pkg/space/entity"
 	"github.com/milosgajdos/netscrape/pkg/space/resource"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
 )
@@ -31,7 +31,7 @@ func newTestResource(name, group, version, kind string, namespaced bool, opts ..
 	return resource.New(name, group, version, kind, namespaced, resource.WithUID(uid))
 }
 
-func newTestObject(entName, entNs string) (space.Object, error) {
+func newTestEntity(entName, entNs string) (space.Entity, error) {
 	r, err := newTestResource(resName, resGroup, resVersion, resKind, true)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func newTestObject(entName, entNs string) (space.Object, error) {
 		return nil, err
 	}
 
-	return object.New(entName, entNs, r, object.WithUID(uid))
+	return entity.New(entName, entNs, r, entity.WithUID(uid))
 }
 
 func TestAttrsToMap(t *testing.T) {
@@ -79,7 +79,7 @@ func TestContains(t *testing.T) {
 }
 
 func TestDecodeJSONEntity(t *testing.T) {
-	testFiles := []string{"object.json", "resource.json"}
+	testFiles := []string{"entity.json", "resource.json"}
 
 	for _, f := range testFiles {
 		path := path.Join(testDir, f)

@@ -4,6 +4,7 @@
 		"name": "nodeResName",
 		"namespaced": true,
 		"xid": "nodeResUID",
+                "type": "Resource",
 		"group": "nodeResGroup",
 		"kind": "nodeResKind",
 		"dgraph.type": [

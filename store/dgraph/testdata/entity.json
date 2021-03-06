@@ -4,6 +4,7 @@
 			"xid": "ent2/entNs",
 			"name": "ent2",
 			"namespace": "entNs",
+                        "type": "Entity",
 			"links|relation": "Unknown",
 			"links|weight": 1
 		}],
@@ -11,6 +12,7 @@
 		"namespace": "entNs",
 		"resource": {
 			"xid": "nodeResUID",
+                        "type": "Resource",
 			"name": "nodeResName",
 			"group": "nodeResGroup",
 			"version": "nodeResVersion",
@@ -18,8 +20,9 @@
 			"namespaced": true
 		},
 		"xid": "ent1/entNs",
+                "type": "Entity",
 		"dgraph.type": [
-			"Object"
+			"Entity"
 		]
 	}]
 }
