@@ -1,9 +1,10 @@
 package dgraph
 
-// SpaceDQLSchema is space DQL schema
+// SpaceDQLSchema defines schema.
 const SpaceDQLSchema = `
-	type Object {
+	type Entity {
 		xid
+		type
 		name
 		namespace
 		resource
@@ -12,6 +13,7 @@ const SpaceDQLSchema = `
 
 	type Resource {
 		xid
+		type
 		name
 		group
 		version
@@ -20,6 +22,7 @@ const SpaceDQLSchema = `
 	}
 
 	xid: string @index(exact) .
+	type: string @index(exact) .
 	name: string @index(exact) .
 	namespace: string @index(exact) .
 	links: [uid] @count @reverse .

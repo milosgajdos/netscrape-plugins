@@ -62,7 +62,7 @@ func TestAdd(t *testing.T) {
 		s := MustNewStore(*host, *drop, t)
 		defer s.Close()
 
-		obj, err := newTestObject("ent1", "entNs")
+		obj, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -100,7 +100,7 @@ func TestGet(t *testing.T) {
 		s := MustNewStore(*host, *drop, t)
 		defer s.Close()
 
-		obj, err := newTestObject("ent1", "entNs")
+		obj, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -118,12 +118,12 @@ func TestGet(t *testing.T) {
 			t.Fatalf("got: %s, want: %s", e.UID(), obj.UID())
 		}
 
-		if !reflect.DeepEqual(obj, e.(space.Object)) {
-			t.Fatalf("expected: %v, got: %v", obj, e.(space.Object))
+		if !reflect.DeepEqual(obj, e.(space.Entity)) {
+			t.Fatalf("expected: %v, got: %v", obj, e.(space.Entity))
 		}
 	})
 
-	t.Run("ErrNodeNotFound", func(t *testing.T) {
+	t.Run("ErrEntityNotFound", func(t *testing.T) {
 		s := MustNewStore(*host, *drop, t)
 		defer s.Close()
 
@@ -132,8 +132,8 @@ func TestGet(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.Get(context.Background(), uid); err != store.ErrNodeNotFound {
-			t.Fatalf("got: %v, want: %v", err, store.ErrNodeNotFound)
+		if _, err := s.Get(context.Background(), uid); err != store.ErrEntityNotFound {
+			t.Fatalf("got: %v, want: %v", err, store.ErrEntityNotFound)
 		}
 	})
 }
@@ -147,7 +147,7 @@ func TestDelete(t *testing.T) {
 		s := MustNewStore(*host, *drop, t)
 		defer s.Close()
 
-		obj, err := newTestObject("ent1", "entNs")
+		obj, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,8 +160,8 @@ func TestDelete(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.Get(context.Background(), obj.UID()); err != store.ErrNodeNotFound {
-			t.Fatalf("got: %v, want: %v", err, store.ErrNodeNotFound)
+		if _, err := s.Get(context.Background(), obj.UID()); err != store.ErrEntityNotFound {
+			t.Fatalf("got: %v, want: %v", err, store.ErrEntityNotFound)
 		}
 	})
 
@@ -189,7 +189,7 @@ func TestLink(t *testing.T) {
 		s := MustNewStore(*host, *drop, t)
 		defer s.Close()
 
-		obj1, err := newTestObject("ent1", "entNs")
+		obj1, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,7 +198,7 @@ func TestLink(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		obj2, err := newTestObject("ent2", "entNs")
+		obj2, err := newTestEntity("ent2", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -221,7 +221,7 @@ func TestLink(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		obj1, err := newTestObject("ent1", "entNs")
+		obj1, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -245,7 +245,7 @@ func TestUnlink(t *testing.T) {
 		s := MustNewStore(*host, *drop, t)
 		defer s.Close()
 
-		obj1, err := newTestObject("ent1", "entNs")
+		obj1, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +254,7 @@ func TestUnlink(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		obj2, err := newTestObject("ent2", "entNs")
+		obj2, err := newTestEntity("ent2", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -281,7 +281,7 @@ func TestUnlink(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		obj1, err := newTestObject("ent1", "entNs")
+		obj1, err := newTestEntity("ent1", "entNs")
 		if err != nil {
 			t.Fatal(err)
 		}

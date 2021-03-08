@@ -10,7 +10,7 @@ import (
 	"github.com/milosgajdos/netscrape/pkg/query/base"
 	"github.com/milosgajdos/netscrape/pkg/query/predicate"
 	"github.com/milosgajdos/netscrape/pkg/space"
-	"github.com/milosgajdos/netscrape/pkg/space/object"
+	"github.com/milosgajdos/netscrape/pkg/space/entity"
 	"github.com/milosgajdos/netscrape/pkg/space/plan"
 	"github.com/milosgajdos/netscrape/pkg/space/resource"
 	"github.com/milosgajdos/netscrape/pkg/space/top"
@@ -139,7 +139,7 @@ func (s *scraper) addEntities(ctx context.Context, top space.Top, names []string
 			return nil, err
 		}
 
-		entities[i], err = object.New(strings.ToLower(name), ns, r, object.WithUID(uid))
+		entities[i], err = entity.New(strings.ToLower(name), ns, r, entity.WithUID(uid))
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +176,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			repoEnt, err := object.New(*repo.Repository.Name, ns, resMap[repoRes], object.WithUID(uid), object.WithAttrs(a))
+			repoEnt, err := entity.New(*repo.Repository.Name, ns, resMap[repoRes], entity.WithUID(uid), entity.WithAttrs(a))
 			if err != nil {
 				return err
 			}
@@ -195,7 +195,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				return err
 			}
 
-			ownerEnt, err := object.New(owner, ns, resMap[ownerRes], object.WithUID(ownerUID))
+			ownerEnt, err := entity.New(owner, ns, resMap[ownerRes], entity.WithUID(ownerUID))
 			if err != nil {
 				return err
 			}

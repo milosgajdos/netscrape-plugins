@@ -6,8 +6,9 @@ import (
 
 	dgapi "github.com/dgraph-io/dgo/v200/protos/api"
 	"github.com/milosgajdos/netscrape/pkg/attrs"
+	types "github.com/milosgajdos/netscrape/pkg/entity"
 	"github.com/milosgajdos/netscrape/pkg/space"
-	"github.com/milosgajdos/netscrape/pkg/space/object"
+	"github.com/milosgajdos/netscrape/pkg/space/entity"
 	"github.com/milosgajdos/netscrape/pkg/space/resource"
 	"github.com/milosgajdos/netscrape/pkg/store"
 	"github.com/milosgajdos/netscrape/pkg/uuid"
@@ -75,7 +76,7 @@ func MutationJSON(op Op, e interface{}, cond string) (*dgapi.Mutation, error) {
 
 func resourceToSpaceResource(r *Resource) (space.Resource, error) {
 	if r == nil {
-		return nil, object.ErrMissingResource
+		return nil, entity.ErrMissingResource
 	}
 
 	uid, err := uuid.NewFromString(r.XID)
@@ -96,7 +97,7 @@ func resourceToSpaceResource(r *Resource) (space.Resource, error) {
 	return resource.New(r.Name, r.Group, r.Version, r.Kind, r.Namespaced, resOpts...)
 }
 
-func objectToSpaceObject(o *Object) (space.Object, error) {
+func entityToSpaceEntity(o *Entity) (space.Entity, error) {
 	res, err := resourceToSpaceResource(o.Resource)
 	if err != nil {
 		return nil, err
@@ -112,12 +113,12 @@ func objectToSpaceObject(o *Object) (space.Object, error) {
 		return nil, err
 	}
 
-	objOpts := []object.Option{
-		object.WithUID(uid),
-		object.WithAttrs(a),
+	objOpts := []entity.Option{
+		entity.WithUID(uid),
+		entity.WithAttrs(a),
 	}
 
-	return object.New(o.Name, o.Namespace, res, objOpts...)
+	return entity.New(o.Name, o.Namespace, res, objOpts...)
 }
 
 func decodeJSONGetEntity(b []byte) ([]store.Entity, error) {
@@ -131,30 +132,26 @@ func decodeJSONGetEntity(b []byte) ([]store.Entity, error) {
 		return nil, fmt.Errorf("decodeJSONGet %w", err)
 	}
 
-	supportedDTypes := []string{ObjectDType, ResourceDType}
 	var ents []store.Entity
 
 	for _, e := range result.Entity {
 		for _, t := range e.DType {
-			if !contains(supportedDTypes, t) {
-				continue
-			}
 			switch t {
-			case ObjectDType:
+			case types.EntityType.String():
 				var result struct {
-					Objects []*Object `json:"entity"`
+					Entities []*Entity `json:"entity"`
 				}
 				if err := json.Unmarshal(b, &result); err != nil {
-					return nil, fmt.Errorf("decodeJSONObject %w", err)
+					return nil, fmt.Errorf("decodeJSONEntity %w", err)
 				}
-				for _, o := range result.Objects {
-					obj, err := objectToSpaceObject(o)
+				for _, e := range result.Entities {
+					ent, err := entityToSpaceEntity(e)
 					if err != nil {
 						return nil, err
 					}
-					ents = append(ents, obj)
+					ents = append(ents, ent)
 				}
-			case ResourceDType:
+			case types.ResourceType.String():
 				var result struct {
 					Resources []*Resource `json:"entity"`
 				}
@@ -176,7 +173,7 @@ func decodeJSONGetEntity(b []byte) ([]store.Entity, error) {
 }
 
 // decodeJSONEntity accepts JSON response and returns a slice of store.Entity
-// NOTE: this is a temporary disgusting hack function; I need to take a cold shower after this.
+// NOTE: this is a temporary hack function; Had to take a cold shower after this.
 func decodeJSONEntity(b []byte, Op Op) ([]store.Entity, error) {
 	switch Op {
 	case GetOp:

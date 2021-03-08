@@ -76,11 +76,11 @@ func (s *Store) Get(ctx context.Context, uid uuid.UID, opts ...store.Option) (st
 	}
 
 	if len(ents) == 0 {
-		return nil, store.ErrNodeNotFound
+		return nil, store.ErrEntityNotFound
 	}
 
 	if len(ents) > 2 {
-		panic("duplicate nodes")
+		panic("duplicate entities")
 	}
 
 	return ents[0], nil

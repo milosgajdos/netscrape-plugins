@@ -7,7 +7,7 @@ require (
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/uuid v1.2.0 // indirect
-	github.com/milosgajdos/netscrape v0.0.5-0.20210303202446-8dd2f3abecfd
+	github.com/milosgajdos/netscrape v0.0.5-0.20210306113940-e77f6d0688d2
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
