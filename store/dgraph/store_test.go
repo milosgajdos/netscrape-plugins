@@ -295,3 +295,58 @@ func TestUnlink(t *testing.T) {
 		}
 	})
 }
+
+func TestBulkAdd(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	t.Run("OK", func(t *testing.T) {
+		s := MustNewStore(*host, *drop, t)
+		defer s.Close()
+	})
+}
+
+func TestBulkGet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	t.Run("OK", func(t *testing.T) {
+		s := MustNewStore(*host, *drop, t)
+		defer s.Close()
+	})
+}
+
+func TestBulkDelete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	t.Run("OK", func(t *testing.T) {
+		s := MustNewStore(*host, *drop, t)
+		defer s.Close()
+	})
+}
+
+func TestBulkLink(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	t.Run("OK", func(t *testing.T) {
+		s := MustNewStore(*host, *drop, t)
+		defer s.Close()
+	})
+}
+
+func TestBulkUnlink(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	t.Run("OK", func(t *testing.T) {
+		s := MustNewStore(*host, *drop, t)
+		defer s.Close()
+	})
+}

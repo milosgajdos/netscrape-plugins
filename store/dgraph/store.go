@@ -70,7 +70,7 @@ func (s *Store) Get(ctx context.Context, uid uuid.UID, opts ...store.Option) (st
 		return nil, fmt.Errorf("txn.Get: %w", err)
 	}
 
-	ents, err := decodeJSONEntity(resp.Json, GetOp)
+	ents, err := decodeJSONEntities(resp.Json, GetOp)
 	if err != nil {
 		return nil, err
 	}
@@ -126,4 +126,29 @@ func (s *Store) Unlink(ctx context.Context, from, to uuid.UID, opts ...store.Opt
 	}
 
 	return nil
+}
+
+// BulkAdd adds entities to store.
+func (s *Store) BulkAdd(ctx context.Context, ents []store.Entity, opts ...store.Option) error {
+	return store.ErrNotImplemented
+}
+
+// BulkGet gets entities from store.
+func (s *Store) BulkGet(ctz context.Context, uids []uuid.UID, opts ...store.Option) ([]Entity, error) {
+	return nil, store.ErrNotImplemented
+}
+
+// BulkDelete deletes entities from store.
+func (s *Store) BulkDelete(ctx context.Context, uids []uuid.UID, opts ...store.Option) error {
+	return store.ErrNotImplemented
+}
+
+// BulkLink links the given entity to the list of given entities in store.
+func (s *Store) BulkLink(ctx context.Context, uid uuid.UID, uids []uuid.UID, opts ...store.Option) error {
+	return store.ErrNotImplemented
+}
+
+// BulkUnlink unlinks the given entity from the list of given entities in store.
+func (s *Store) BulkUnlink(ctx context.Context, uid uuid.UID, uids []uuid.UID, opts ...store.Option) error {
+	return store.ErrNotImplemented
 }

@@ -89,7 +89,7 @@ func TestDecodeJSONEntity(t *testing.T) {
 			t.Fatalf("failed opening file: %v", err)
 		}
 
-		ents, err := decodeJSONEntity(data, GetOp)
+		ents, err := decodeJSONEntities(data, GetOp)
 		if err != nil {
 			t.Fatalf("failed decoding data: %v", err)
 		}

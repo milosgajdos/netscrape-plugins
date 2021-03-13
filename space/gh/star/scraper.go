@@ -7,8 +7,6 @@ import (
 
 	"github.com/google/go-github/v32/github"
 	"github.com/milosgajdos/netscrape/pkg/attrs"
-	"github.com/milosgajdos/netscrape/pkg/query/base"
-	"github.com/milosgajdos/netscrape/pkg/query/predicate"
 	"github.com/milosgajdos/netscrape/pkg/space"
 	"github.com/milosgajdos/netscrape/pkg/space/entity"
 	"github.com/milosgajdos/netscrape/pkg/space/plan"
@@ -62,7 +60,7 @@ type params struct {
 	ns      bool
 }
 
-func defaultParams() []params {
+func resourceParams() []params {
 	return []params{
 		{name: ownerRes, group: ownerGroup, version: version, kind: resKind, ns: true},
 		{name: repoRes, group: repoGroup, version: version, kind: resKind, ns: true},
@@ -78,7 +76,7 @@ func (s *scraper) Plan(ctx context.Context, o space.Origin) (space.Plan, error) 
 		return nil, err
 	}
 
-	params := defaultParams()
+	params := resourceParams()
 
 	for _, p := range params {
 		r, err := resource.New(p.name, p.group, p.version, p.kind, p.ns)
@@ -211,7 +209,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 			a.Set(attrs.Relation, ownerRel)
 			a.Set(attrs.DOTLabel, ownerRel)
 
-			if err := top.Link(ctx, ownerEnt.UID(), repoEnt.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
+			if err := top.Link(ctx, ownerEnt.UID(), repoEnt.UID(), space.WithAttrs(a), space.WithMerge()); err != nil {
 				return err
 			}
 
@@ -228,7 +226,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 				a.Set(attrs.Relation, topicRel)
 				a.Set(attrs.DOTLabel, ownerRel)
 
-				if err := top.Link(ctx, repoEnt.UID(), topic.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
+				if err := top.Link(ctx, repoEnt.UID(), topic.UID(), space.WithAttrs(a), space.WithMerge()); err != nil {
 					return err
 				}
 			}
@@ -247,7 +245,7 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 					a.Set(attrs.Relation, langRel)
 					a.Set(attrs.DOTLabel, ownerRel)
 
-					if err := top.Link(ctx, repoEnt.UID(), lang.UID(), space.WithAttrs(a), space.WithMerge(true)); err != nil {
+					if err := top.Link(ctx, repoEnt.UID(), lang.UID(), space.WithAttrs(a), space.WithMerge()); err != nil {
 						return err
 					}
 				}
@@ -258,41 +256,6 @@ func (s *scraper) mapRepos(ctx context.Context, reposChan <-chan []*github.Starr
 	return nil
 }
 
-// getResource queries p with query params from qp and returns the result.
-// getResource returns a single resource matching the query params.
-func getResource(ctx context.Context, p space.Plan, qp params) (space.Resource, error) {
-	query := base.Build().
-		Add(predicate.Name(qp.name)).
-		Add(predicate.Group(qp.group)).
-		Add(predicate.Version(qp.version)).
-		Add(predicate.Kind(qp.kind))
-
-	// NOTE: this must return a single value
-	// for each of the queried resources
-	rx, err := p.Get(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-
-	return rx[0], nil
-}
-
-func getResources(ctx context.Context, p space.Plan, qp ...params) (map[string]space.Resource, error) {
-	rx := make(map[string]space.Resource)
-
-	for _, q := range qp {
-		r, err := getResource(ctx, p, q)
-		if err != nil {
-			return nil, err
-		}
-		// NOTE: this is safe as getResource
-		// only returns a single value
-		rx[r.Name()] = r
-	}
-
-	return rx, nil
-}
-
 // Map builds a map of GH stars space topology and returns it.
 // It returns error if any of the API calls fails with error.
 func (s *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
@@ -301,11 +264,15 @@ func (s *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 		return nil, err
 	}
 
-	params := defaultParams()
-
-	rx, err := getResources(ctx, p, params...)
+	rx, err := p.GetAll(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	resMap := make(map[string]space.Resource)
+
+	for _, r := range rx {
+		resMap[r.Name()] = r
 	}
 
 	reposChan := make(chan []*github.StarredRepository, s.opts.Workers)
@@ -321,7 +288,7 @@ func (s *scraper) Map(ctx context.Context, p space.Plan) (space.Top, error) {
 		go func(i int) {
 			defer wg.Done()
 			select {
-			case errChan <- s.mapRepos(ctx, reposChan, top, rx):
+			case errChan <- s.mapRepos(ctx, reposChan, top, resMap):
 			case <-done:
 			case <-ctx.Done():
 			}

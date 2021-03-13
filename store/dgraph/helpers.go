@@ -172,9 +172,9 @@ func decodeJSONGetEntity(b []byte) ([]store.Entity, error) {
 	return ents, nil
 }
 
-// decodeJSONEntity accepts JSON response and returns a slice of store.Entity
+// decodeJSONEntities accepts JSON response and returns a slice of store.Entity
 // NOTE: this is a temporary hack function; Had to take a cold shower after this.
-func decodeJSONEntity(b []byte, Op Op) ([]store.Entity, error) {
+func decodeJSONEntities(b []byte, Op Op) ([]store.Entity, error) {
 	switch Op {
 	case GetOp:
 		return decodeJSONGetEntity(b)
